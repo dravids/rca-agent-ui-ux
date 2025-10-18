@@ -1,12 +1,25 @@
 import pino from 'pino';
 
-export const serverLogger = pino({
-	level: process.env.LOG_LEVEL || 'info',
-	transport: process.env.NODE_ENV !== 'production' ? {
-		target: 'pino-pretty',
-		options: { colorize: true }
-	} : undefined
-});
+// Create a more robust logger configuration that handles worker thread issues
+const createLogger = () => {
+	const baseConfig = {
+		level: process.env.LOG_LEVEL || 'info',
+	};
+
+	// In development, use a simpler configuration to avoid worker thread issues
+	if (process.env.NODE_ENV !== 'production') {
+		// Use a basic logger without transport to avoid worker thread issues
+		return pino({
+			...baseConfig,
+			// Remove transport to avoid worker thread issues
+			// The basic pino logger will output JSON which is still readable
+		});
+	}
+
+	return pino(baseConfig);
+};
+
+export const serverLogger = createLogger();
 
 export type ClientLogPayload = {
 	level?: 'debug' | 'info' | 'warn' | 'error';

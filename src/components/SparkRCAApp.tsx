@@ -140,7 +140,7 @@ export default function SparkRCAApp() {
 	const svgRef = useRef<SVGSVGElement>(null);
 
 	// Add tab state for investigation trail
-	const [activeTab, setActiveTab] = useState<'trail' | 'rootcause'>('trail');
+	const [activeTab, setActiveTab] = useState<'trail' | 'rootcause' | 'solution'>('trail');
 
 	useEffect(() => {
 		const load = async () => {
@@ -722,77 +722,80 @@ export default function SparkRCAApp() {
 		
 		// Generate timeline based on the investigation path
 		timeline.push({
-			time: "00:00",
-			event: "Pipeline Failure Detected",
-			description: "ETL pipeline failed with multiple stage errors, breaching 3-hour SLA",
+			time: "23:45",
+			event: "Production Incident: Job Failure",
+			description: "user_analytics_daily_agg job failed after 4h 12m. Stage 3 (SortMergeJoin) failed 4 times with 156 task failures. Critical SLA breach detected.",
 			type: "incident"
+		});
+
+		timeline.push({
+			time: "23:50",
+			event: "RCA Investigation Initiated",
+			description: "MCTS-based root cause analysis started. Examining logs, metrics, Spark UI, and shuffle statistics across multiple dimensions.",
+			type: "analysis"
 		});
 
 		if (path.length > 0) {
 			timeline.push({
-				time: "00:15",
-				event: `Initial Investigation: ${path[0]?.label}`,
-				description: `MCTS algorithm identified ${path[0]?.label} as highest probability investigation vector (${(path[0]?.reward * 100).toFixed(0)}% confidence)`,
+				time: "23:55",
+				event: `Level 1 Analysis: ${path[0]?.label}`,
+				description: `Identified ${path[0]?.label} as primary investigation vector (${(path[0]?.reward * 100).toFixed(0)}% confidence). Analyzing stage execution patterns and failure modes.`,
 				type: "analysis"
 			});
 		}
 
 		if (path.length > 1) {
 			timeline.push({
-				time: "00:45",
-				event: `Deep Dive: ${path[1]?.label}`,
-				description: `Focused analysis on ${path[1]?.label} revealed critical evidence patterns`,
+				time: "00:10",
+				event: `Level 2 Deep Dive: ${path[1]?.label}`,
+				description: `Focused on ${path[1]?.label}. Analyzing join operation details: 12M×850M rows, 182GB shuffle, task duration variance patterns.`,
 				type: "analysis"
 			});
 		}
 
 		if (path.length > 2) {
 			timeline.push({
-				time: "01:20",
+				time: "00:25",
 				event: `Root Cause Identified: ${path[2]?.label}`,
-				description: `Definitive root cause located: ${path[2]?.label} with ${(path[2]?.reward * 100).toFixed(0)}% confidence`,
+				description: `Data skew root cause confirmed: user_id keys "premium_user_999" (8.4GB) and "bot_crawler_001" (7.9GB) creating 204:1 partition skew. This directly explains all observed symptoms.`,
 				type: "discovery"
 			});
 		}
 
-		if (rootCause.label === 'DeployProduction') {
+		if (rootCause.label === 'RCAComplete') {
 			timeline.push({
-				time: "01:45",
-				event: "Solution Implemented",
-				description: "Applied recommended fix and validated solution effectiveness",
-				type: "solution"
+				time: "00:35",
+				event: "Analysis: Skew Mechanism",
+				description: "Hash partitioning on user_id distributes data unevenly. Power users generate 200x more events than average users. Single partition (127) receives 8.4GB while others get ~42MB.",
+				type: "analysis"
 			});
 
 			timeline.push({
-				time: "02:30",
-				event: "Production Deployment",
-				description: "Successfully deployed fix to production. Pipeline now running normally within SLA.",
-				type: "resolution"
+				time: "00:42",
+				event: "Correlation: OOM to Partition Size",
+				description: "Executor heap: 6GB. Partition 127: 8.4GB. Single executor cannot hold entire partition in memory during sort-merge join, causing java.lang.OutOfMemoryError.",
+				type: "discovery"
+			});
+
+			timeline.push({
+				time: "00:48",
+				event: "RCA Conclusion",
+				description: "Root cause confirmed: Data skew on join key creating hot partitions that exceed executor memory, causing OOM errors, task failures, and job failure. Investigation complete.",
+				type: "discovery"
 			});
 		}
 
 		const explanation = {
-			title: `Root Cause: ${rootCause.label}`,
+			title: `Data Skew in SortMergeJoin Operation`,
 			summary: rootCause.hypothesis.content,
-			impact: "Pipeline failure causing 3-hour SLA breach, affecting downstream systems and business operations",
-			solution: getSolutionDescription(rootCause.label),
+			impact: "Production ETL pipeline failure (4h 12m with 156 task failures). SLA breach impacting downstream analytics and business reporting. Estimated business impact: $50K in delayed insights and wasted compute resources.",
+			mechanism: "Hash partitioning on user_id key creates uneven distribution. Power users with high event counts (8.4GB) are assigned to single partitions, while average users generate only 42MB per partition. Executor memory (6GB) insufficient to process oversized partitions, resulting in OOM.",
 			confidence: `${(rootCause.reward * 100).toFixed(0)}%`,
 			investigationPath: path.map(n => n.label).join(' → ')
 		};
 
 		return { explanation, timeline };
 	}, [rootCause, bestPathFound]);
-
-	const getSolutionDescription = (rootCauseLabel: string) => {
-		const solutions: Record<string, string> = {
-			'DeployProduction': 'Applied data skew mitigation through key salting strategy, improving partition distribution and eliminating hot partitions. Performance improved 3x with stable memory usage.',
-			'TestRun': 'Validated solution on sample data with successful results. Ready for production deployment with continuous monitoring.',
-			'MemoryProfile': 'Fixed UDF memory leak through code optimization. Memory usage stabilized at 55% with no OOM errors.',
-			'PartitionBalance': 'Implemented repartitioning strategy achieving balanced partition sizes (<100MB each). Shuffle operations reduced by 60%.',
-			'ContainerStable': 'Increased memory overhead to 1GB, eliminating container kills. System now stable with 80% resource utilization.'
-		};
-		return solutions[rootCauseLabel] || 'Solution implemented based on identified root cause with validated effectiveness.';
-	};
 
 	// Auto-switch to root cause tab when found
 	useEffect(() => {
@@ -1118,6 +1121,49 @@ export default function SparkRCAApp() {
 			}
 			.timeline-description { 
 				font-size: 12px; color: #64748b; line-height: 1.4; 
+			}
+			.solution-section, .reading-section, .best-practices {
+				margin-bottom: 24px;
+			}
+			.solution-section h4, .reading-section h4, .best-practices h4 {
+				margin: 0 0 16px 0; color: #1e293b; font-size: 16px; font-weight: 600;
+			}
+			.solution-card {
+				background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(226, 232, 240, 0.8);
+				border-radius: 12px; padding: 16px; margin-bottom: 16px;
+				transition: all 0.2s ease;
+			}
+			.solution-card:hover {
+				transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+			}
+			.solution-card h5 {
+				margin: 0 0 12px 0; color: #6366f1; font-size: 14px; font-weight: 600;
+			}
+			.solution-card p {
+				margin: 8px 0; font-size: 12px; color: #475569; line-height: 1.6;
+			}
+			.code-block {
+				background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 8px;
+				font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 11px;
+				line-height: 1.6; overflow-x: auto; margin: 12px 0;
+				white-space: pre; border: 1px solid #334155;
+			}
+			.reading-list, .practice-list {
+				list-style: none; padding: 0; margin: 0;
+			}
+			.reading-list li, .practice-list li {
+				padding: 12px; margin-bottom: 8px; background: rgba(255, 255, 255, 0.8);
+				border-radius: 8px; border-left: 3px solid #6366f1; font-size: 12px;
+				line-height: 1.6; color: #475569;
+			}
+			.reading-list li strong, .practice-list li strong {
+				color: #1e293b; display: block; margin-bottom: 4px;
+			}
+			.reading-list a {
+				color: #6366f1; text-decoration: none; font-size: 11px;
+			}
+			.reading-list a:hover {
+				text-decoration: underline;
 			}
 			.control-bar { 
 				position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); 
@@ -1616,13 +1662,22 @@ export default function SparkRCAApp() {
 								<span>Investigation Trail</span>
 							</button>
 							{rootCause && (
-								<button 
-									className={`tab-btn ${activeTab === 'rootcause' ? 'active' : ''}`}
-									onClick={() => setActiveTab('rootcause')}
-								>
-									<Star size={16} />
-									<span>Root Cause Found</span>
-								</button>
+								<>
+									<button 
+										className={`tab-btn ${activeTab === 'rootcause' ? 'active' : ''}`}
+										onClick={() => setActiveTab('rootcause')}
+									>
+										<Star size={16} />
+										<span>Root Cause Analysis</span>
+									</button>
+									<button 
+										className={`tab-btn ${activeTab === 'solution' ? 'active' : ''}`}
+										onClick={() => setActiveTab('solution')}
+									>
+										<ChevronRight size={16} />
+										<span>Possible Solutions</span>
+									</button>
+								</>
 							)}
 						</div>
 
@@ -1656,7 +1711,7 @@ export default function SparkRCAApp() {
 											<strong>Impact:</strong> {explanation.impact}
 										</div>
 										<div className="rc-solution">
-											<strong>Solution Applied:</strong> {explanation.solution}
+											<strong>Failure Mechanism:</strong> {explanation.mechanism}
 										</div>
 									</div>
 
@@ -1677,6 +1732,119 @@ export default function SparkRCAApp() {
 								</div>
 							);
 						})()}
+
+						{activeTab === 'solution' && rootCause && (
+							<div className="tab-content">
+								<div className="solution-section">
+									<h4>💡 Recommended Solutions</h4>
+									
+									<div className="solution-card">
+										<h5>1. Key Salting (Recommended)</h5>
+										<p><strong>Approach:</strong> Add random salt suffix to skewed keys to distribute them across multiple partitions.</p>
+										<div className="code-block">
+											{`// Scala/Spark implementation
+val saltFactor = 10
+val saltedDF = df
+  .withColumn("salt", 
+    when(col("user_id").isin("premium_user_999", "bot_crawler_001"),
+         (rand() * saltFactor).cast("int"))
+    .otherwise(lit(0)))
+  .withColumn("salted_key", concat(col("user_id"), lit("_"), col("salt")))
+
+// Join on salted key instead
+leftDF.join(rightDF.repartition(col("salted_key")), "salted_key")`}
+										</div>
+										<p><strong>Expected Impact:</strong> Reduces max partition from 8.4GB to 840MB. Task duration variance from 42x to ~3x.</p>
+									</div>
+
+									<div className="solution-card">
+										<h5>2. Adaptive Query Execution (AQE)</h5>
+										<p><strong>Approach:</strong> Enable Spark 3.x Adaptive Query Execution to automatically handle skew.</p>
+										<div className="code-block">
+											{`spark.conf.set("spark.sql.adaptive.enabled", "true")
+spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+spark.conf.set("spark.sql.adaptive.skewJoin.skewedPartitionFactor", "5")
+spark.conf.set("spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes", "256MB")`}
+										</div>
+										<p><strong>Expected Impact:</strong> Spark automatically detects and splits skewed partitions at runtime.</p>
+									</div>
+
+									<div className="solution-card">
+										<h5>3. Isolated Processing</h5>
+										<p><strong>Approach:</strong> Filter out power users and process them separately with different strategy.</p>
+										<div className="code-block">
+											{`val powerUsers = Seq("premium_user_999", "bot_crawler_001")
+val normalUsers = events.filter(!col("user_id").isin(powerUsers: _*))
+val powerUserData = events.filter(col("user_id").isin(powerUsers: _*))
+
+// Process normal users with standard join
+val normalResult = normalUsers.join(users, "user_id")
+
+// Process power users with broadcast or sampling
+val powerResult = powerUserData.join(broadcast(users), "user_id")
+  .sample(0.05) // 5% sample for power users
+
+normalResult.union(powerResult)`}
+										</div>
+										<p><strong>Expected Impact:</strong> Prevents power users from affecting overall job performance.</p>
+									</div>
+
+									<div className="solution-card">
+										<h5>4. Increase Executor Memory (Temporary)</h5>
+										<p><strong>Approach:</strong> Increase executor heap to handle larger partitions.</p>
+										<div className="code-block">
+											{`spark.conf.set("spark.executor.memory", "12g")  // Double from 6g
+spark.conf.set("spark.executor.memoryOverhead", "2g")  // Increase overhead`}
+										</div>
+										<p><strong>Expected Impact:</strong> Temporary mitigation. Still inefficient due to skew, but prevents OOM.</p>
+										<p><strong>Note:</strong> Not recommended as long-term solution. Increases cost and doesn't address root cause.</p>
+									</div>
+								</div>
+
+								<div className="reading-section">
+									<h4>📚 Further Reading</h4>
+									<ul className="reading-list">
+										<li>
+											<strong>Databricks: Skew Handling</strong><br />
+											<a href="https://www.databricks.com/blog/2020/05/29/adaptive-query-execution-speeding-up-spark-sql-at-runtime.html" target="_blank" rel="noopener noreferrer">
+												Adaptive Query Execution: Speeding Up Spark SQL at Runtime
+											</a>
+										</li>
+										<li>
+											<strong>Apache Spark Documentation</strong><br />
+											<a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html#other-configuration-options" target="_blank" rel="noopener noreferrer">
+												Performance Tuning - Skew Join Optimization
+											</a>
+										</li>
+										<li>
+											<strong>Netflix Tech Blog</strong><br />
+											<a href="https://netflixtechblog.com/scaling-time-series-data-storage-part-i-ec2b6d44ba39" target="_blank" rel="noopener noreferrer">
+												Handling Data Skew in Large-Scale Processing
+											</a>
+										</li>
+										<li>
+											<strong>Spark: The Definitive Guide</strong><br />
+											Chapter 19: Performance Tuning (O'Reilly, 2018) - Section on handling skewed data
+										</li>
+										<li>
+											<strong>Research Paper</strong><br />
+											"SkewTune: Mitigating Skew in MapReduce Applications" (SIGMOD 2012)
+										</li>
+									</ul>
+								</div>
+
+								<div className="best-practices">
+									<h4>✅ Best Practices</h4>
+									<ul className="practice-list">
+										<li><strong>Monitor Partition Sizes:</strong> Set up alerts when max/avg partition ratio exceeds 10:1</li>
+										<li><strong>Profile Join Keys:</strong> Analyze key distribution before implementing large joins</li>
+										<li><strong>Use AQE by Default:</strong> Enable Adaptive Query Execution in production</li>
+										<li><strong>Test with Production Data:</strong> Sample-based testing may miss skew patterns</li>
+										<li><strong>Document Power Users:</strong> Maintain list of known high-volume entities for special handling</li>
+									</ul>
+								</div>
+							</div>
+						)}
 					</div>
 				</div>
 			</div>
