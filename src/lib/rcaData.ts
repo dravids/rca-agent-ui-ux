@@ -273,10 +273,10 @@ export function generateLargeTree(): TreeData {
 	const nodeMap: Record<string, RcaNode> = {};
 	let nodeId = 0;
 
-	// Root node
+	// Root node - centered in the 1200px wide SVG
 	nodes.push({
 		id: 'root',
-		x: 450,
+		x: 600, // Center of 1200px viewport
 		y: 30,
 		label: 'JobFailure',
 		reward: 0.0,
@@ -294,24 +294,25 @@ export function generateLargeTree(): TreeData {
 	nodeMap['root'] = nodes[0];
 
 	// Level 1: Initial Investigation Vectors (7 nodes)
+	// NOTE: Order is randomized - highest confidence (StageFailures 82%) is NOT first
 	const level1Categories = [
-		{ label: 'StageFailures', reward: 0.82, signals: { sparkui: ['Multiple stages failing'], errors: { value: 8, label: 'Stage Failures' }}},
 		{ label: 'MemoryAlerts', reward: 0.75, signals: { logs: ['OOM warnings'], metrics: { memory: { value: 95, label: 'Memory %', bar: 95 }}}},
-		{ label: 'NetworkTimeout', reward: 0.45, signals: { network: ['Cross-DC latency: 250ms', 'Timeout errors'] }},
 		{ label: 'DataQuality', reward: 0.68, signals: { logs: ['Null records spike'], sparkui: ['Data quality issues'] }},
-		{ label: 'ShuffleErrors', reward: 0.71, signals: { shuffle: ['Shuffle fetch failures', 'Spill: 200GB'] }},
+		{ label: 'StageFailures', reward: 0.82, signals: { sparkui: ['Multiple stages failing'], errors: { value: 8, label: 'Stage Failures' }}}, // HIGHEST
+		{ label: 'NetworkTimeout', reward: 0.45, signals: { network: ['Cross-DC latency: 250ms', 'Timeout errors'] }},
 		{ label: 'TaskRetries', reward: 0.63, signals: { sparkui: ['Excessive retries: 234'], logs: ['Task retry limit exceeded'] }},
+		{ label: 'ShuffleErrors', reward: 0.71, signals: { shuffle: ['Shuffle fetch failures', 'Spill: 200GB'] }},
 		{ label: 'ClusterHealth', reward: 0.38, signals: { metrics: { cpu: { value: 45, label: 'CPU', bar: 45 }}, network: ['Node failures: 2'] }}
 	];
 
 	// Level 2: Deep Dive Analysis (Variable children per parent)
 	const level2Categories: Record<string, any[]> = {
 		'StageFailures': [
-			{ label: 'JoinStage', reward: 0.78, signals: { sparkui: ['Stage 23 consistently fails'], shuffle: ['Join shuffle: 500GB'] }},
-			{ label: 'AggregateStage', reward: 0.69, signals: { sparkui: ['GroupBy timeout'], logs: ['Aggregate stage OOM'] }},
 			{ label: 'WriteStage', reward: 0.44, signals: { logs: ['HDFS write errors'], sparkui: ['Write stage failures'] }},
-			{ label: 'ReadStage', reward: 0.51, signals: { logs: ['Source partition missing'], sparkui: ['Read stage timeout'] }},
 			{ label: 'WindowStage', reward: 0.73, signals: { logs: ['Window function OOM'], sparkui: ['Window stage memory'] }},
+			{ label: 'ReadStage', reward: 0.51, signals: { logs: ['Source partition missing'], sparkui: ['Read stage timeout'] }},
+			{ label: 'JoinStage', reward: 0.88, signals: { sparkui: ['Stage 23 consistently fails'], shuffle: ['Join shuffle: 500GB'] }}, // HIGHEST
+			{ label: 'AggregateStage', reward: 0.69, signals: { sparkui: ['GroupBy timeout'], logs: ['Aggregate stage OOM'] }},
 			{ label: 'BroadcastStage', reward: 0.65, signals: { sparkui: ['Broadcast timeout'], logs: ['Broadcast stage failure'] }}
 		],
 		'MemoryAlerts': [
@@ -342,11 +343,11 @@ export function generateLargeTree(): TreeData {
 	// Level 3: Root Cause Identification
 	const level3Categories: Record<string, any[]> = {
 		'JoinStage': [
-			{ label: 'SkewedJoin', reward: 0.91, signals: { shuffle: ['One key has 80% of data'], sparkui: ['Task variance: 50x'] }},
-			{ label: 'CartesianProduct', reward: 0.35, signals: { sparkui: ['Accidental cartesian'], logs: ['Massive join output'] }},
 			{ label: 'BroadcastTimeout', reward: 0.68, signals: { sparkui: ['Large broadcast table'], logs: ['Broadcast timeout'] }},
-			{ label: 'JoinKeyMismatch', reward: 0.42, signals: { logs: ['Data type mismatch'], sparkui: ['Join key issues'] }},
-			{ label: 'SortMergeOOM', reward: 0.76, signals: { logs: ['Sort buffer overflow'], metrics: { memory: { value: 98, label: 'Sort Memory', bar: 98 }}}}
+			{ label: 'CartesianProduct', reward: 0.35, signals: { sparkui: ['Accidental cartesian'], logs: ['Massive join output'] }},
+			{ label: 'SortMergeOOM', reward: 0.76, signals: { logs: ['Sort buffer overflow'], metrics: { memory: { value: 98, label: 'Sort Memory', bar: 98 }}}},
+			{ label: 'SkewedJoin', reward: 0.91, signals: { shuffle: ['One key has 80% of data'], sparkui: ['Task variance: 50x'] }}, // HIGHEST
+			{ label: 'JoinKeyMismatch', reward: 0.42, signals: { logs: ['Data type mismatch'], sparkui: ['Join key issues'] }}
 		],
 		'ExecutorOOM': [
 			{ label: 'HeapConfig', reward: 0.79, signals: { logs: ['executor.memory too low'], metrics: { memory: { value: 100, label: 'Heap', bar: 100 }}}},
@@ -378,11 +379,11 @@ export function generateLargeTree(): TreeData {
 	// Level 4: Root Cause Confirmation (deeper analysis)
 	const level4Categories: Record<string, any[]> = {
 		'SkewedJoin': [
-			{ label: 'PartitionAnalysis', reward: 0.93, signals: { sparkui: ['Analyzing partition 127 in detail'], shuffle: ['Partition size distribution'] }},
-			{ label: 'KeyDistribution', reward: 0.89, signals: { sparkui: ['Analyzing join key cardinality'], logs: ['Key frequency analysis'] }},
+			{ label: 'ShuffleMetrics', reward: 0.71, signals: { shuffle: ['Shuffle read/write patterns'], sparkui: ['Shuffle stage analysis'] }},
 			{ label: 'TaskTimeline', reward: 0.86, signals: { sparkui: ['Task execution timeline'], logs: ['Straggler task patterns'] }},
+			{ label: 'PartitionAnalysis', reward: 0.93, signals: { sparkui: ['Analyzing partition 127 in detail'], shuffle: ['Partition size distribution'] }}, // HIGHEST
 			{ label: 'MemoryFootprint', reward: 0.78, signals: { logs: ['Memory consumption per partition'], metrics: { memory: { value: 98, label: 'Memory', bar: 98 }}}},
-			{ label: 'ShuffleMetrics', reward: 0.71, signals: { shuffle: ['Shuffle read/write patterns'], sparkui: ['Shuffle stage analysis'] }}
+			{ label: 'KeyDistribution', reward: 0.89, signals: { sparkui: ['Analyzing join key cardinality'], logs: ['Key frequency analysis'] }}
 		],
 		'UDFMemoryLeak': [
 			{ label: 'PythonWorkerTrace', reward: 0.94, signals: { logs: ['Python worker memory trace'], metrics: { memory: { value: 92, label: 'Memory', bar: 92 }}}},
@@ -458,10 +459,11 @@ export function generateLargeTree(): TreeData {
 		]
 	};
 
-	// Helper function to estimate text width
+	// Helper function to estimate text width more accurately
 	const estimateTextWidth = (text: string): number => {
-		// Rough estimation: 6px per character for the font size used
-		return Math.max(80, text.length * 7 + 40); // Minimum 80px, plus padding
+		// More accurate estimation: 8px per character for typical node labels
+		// Plus extra padding for the circle background and border
+		return Math.max(100, text.length * 8 + 50); // Minimum 100px, plus padding
 	};
 
 	// Helper function to detect and resolve overlaps while maintaining parent-child grouping
@@ -663,6 +665,15 @@ export function generateLargeTree(): TreeData {
 			return aMinX - bMinX;
 		});
 
+		// Resolve overlaps iteratively
+		let hasOverlap = true;
+		let iterations = 0;
+		const maxIterations = 10;
+		
+		while (hasOverlap && iterations < maxIterations) {
+			hasOverlap = false;
+			iterations++;
+
 		for (let i = 1; i < sortedGroups.length; i++) {
 			const currentGroup = sortedGroups[i][1];
 			const previousGroup = sortedGroups[i - 1][1];
@@ -675,17 +686,40 @@ export function generateLargeTree(): TreeData {
 			
 			const prevWidth = estimateTextWidth(prevRightmostNode.label);
 			const currWidth = estimateTextWidth(currLeftmostNode.label);
-			const minDistance = prevWidth / 2 + currWidth / 2 + 40; // Half widths + padding
+				const minDistance = prevWidth / 2 + currWidth / 2 + 50; // Half widths + extra padding
 			
 			const actualDistance = currentMinX - previousMaxX;
 			
 			if (actualDistance < minDistance) {
+					hasOverlap = true;
 				// Move the entire current group to the right
-				const shiftAmount = minDistance - actualDistance;
+					const shiftAmount = minDistance - actualDistance + 10; // Extra buffer
 				currentGroup.forEach(node => {
-					node.x = Math.min(1150, node.x + shiftAmount);
-				});
+						node.x = Math.min(1120, node.x + shiftAmount);
+					});
+				}
 			}
+		}
+		
+		// If nodes are pushed too far right, scale down proportionally while maintaining parent-child relationships
+		const allX = levelNodes.map(n => n.x);
+		const minX = Math.min(...allX);
+		const maxX = Math.max(...allX);
+		const totalSpan = maxX - minX;
+		
+		if (maxX > 1100) {
+			// Scale down all nodes proportionally to fit within bounds
+			// This maintains the tree structure and parent-child relationships
+			const targetMaxX = 1100;
+			const targetMinX = 100;
+			const targetSpan = targetMaxX - targetMinX;
+			const scale = totalSpan > 0 ? targetSpan / totalSpan : 1;
+			
+			levelNodes.forEach(node => {
+				// Scale position relative to the leftmost node
+				const relativeX = node.x - minX;
+				node.x = targetMinX + relativeX * scale;
+			});
 		}
 	};
 
@@ -720,42 +754,67 @@ export function generateLargeTree(): TreeData {
 			const categories = parentChildrenMap.get(parentNode.id);
 			if (!categories || categories.length === 0) return;
 
+			// DO NOT sort - keep natural order for MCTS exploration
+			// The algorithm will discover confidence at runtime
 			const childCount = categories.length;
 			
-			// Position children symmetrically around parent - SIMPLE APPROACH
-			categories.forEach((category: any, childIdx: number) => {
-				let xPosition: number;
+			// Calculate the space needed per child based on text width
+			const nodeWidths = categories.map((cat: any) => estimateTextWidth(cat.label));
+			const maxNodeWidth = Math.max(...nodeWidths);
+			
+			// Base spacing on the largest node width plus padding
+			let spacing = Math.max(150, maxNodeWidth + 60);
+			
+			// Calculate total width needed for all children
+			let totalWidthNeeded = (childCount - 1) * spacing;
+			
+			// Calculate ideal centered positions
+			let idealStartX = parentNode.x - totalWidthNeeded / 2;
+			let idealEndX = parentNode.x + totalWidthNeeded / 2;
+			
+			// Check bounds and adjust THIS parent group if needed
+			let startX = idealStartX;
+			
+			// If this group would go out of bounds, compress spacing for this group only
+			if (idealStartX < 80 || idealEndX > 1120) {
+				const availableWidth = 1040; // 80 to 1120
 				
-				if (childCount === 1) {
-					xPosition = parentNode.x;
-				} else if (childCount === 2) {
-					xPosition = parentNode.x + (childIdx === 0 ? -120 : 120);
-				} else if (childCount === 3) {
-					xPosition = parentNode.x + (childIdx === 0 ? -150 : childIdx === 1 ? 0 : 150);
-				} else if (childCount === 4) {
-					xPosition = parentNode.x + (childIdx === 0 ? -180 : childIdx === 1 ? -60 : childIdx === 2 ? 60 : 180);
-				} else if (childCount === 5) {
-					xPosition = parentNode.x + (childIdx === 0 ? -200 : childIdx === 1 ? -100 : childIdx === 2 ? 0 : childIdx === 3 ? 100 : 200);
-				} else { // 6+ children
-					const spacing = 100;
-					const totalWidth = (childCount - 1) * spacing;
-					const startX = parentNode.x - totalWidth / 2;
-					xPosition = startX + childIdx * spacing;
+				if (totalWidthNeeded > availableWidth) {
+					// Group is too wide - reduce spacing
+					spacing = availableWidth / (childCount - 1);
+					totalWidthNeeded = (childCount - 1) * spacing;
+					// Re-center with new spacing
+					startX = parentNode.x - totalWidthNeeded / 2;
+					
+					// Clamp to bounds
+					if (startX < 80) startX = 80;
+					if (startX + totalWidthNeeded > 1120) startX = 1120 - totalWidthNeeded;
+				} else {
+					// Group fits, just shift it
+					if (idealStartX < 80) {
+						startX = 80;
+					} else if (idealEndX > 1120) {
+						startX = 1120 - totalWidthNeeded;
+					}
 				}
+			}
+			
+			// Position children
+			categories.forEach((category: any, childIdx: number) => {
+				const xPosition = childCount === 1 ? parentNode.x : startX + (childIdx * spacing);
 				
-				// Clamp to SVG bounds
-				xPosition = Math.max(50, Math.min(1150, xPosition));
-				
-				const randomReward = Math.max(0, Math.min(1, category.reward + (Math.random() - 0.5) * 0.08));
+				// Use the exact reward value defined for this category (no randomization)
+				// This ensures the MCTS algorithm follows the highest-confidence path
+				const reward = category.reward;
 
 				const hypothesisContent = getHypothesisForNode(category.label, parentNode.label);
-				
+
 				const node: RcaNode = {
 					id: `n${++nodeId}`,
 					x: xPosition,
 					y: 30 + (level + 1) * 130,
 					label: category.label,
-					reward: randomReward,
+					reward: reward,
 					parent: parentNode.id,
 					level: level + 1,
 					hypothesis: {
@@ -774,12 +833,8 @@ export function generateLargeTree(): TreeData {
 			});
 		});
 
-		// Third pass: resolve any overlaps for this level (SIMPLE VERSION)
-		if (nextLevelNodes.length > 0) {
-			// Only resolve overlaps between different parent groups, not within groups
-			resolveInterGroupOverlaps(nodes, level + 1);
-	
-		}
+		// Third pass: No level-wide adjustments needed
+		// Bounds are handled per parent group to maintain tree structure
 
 		currentLevelNodes = nextLevelNodes;
 	}

@@ -75,6 +75,7 @@ export default function SparkRCAApp() {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [speedMode, setSpeedMode] = useState<0 | 1 | 2>(1);
 	const [bestPathFound, setBestPathFound] = useState<{ path: RcaNode[]; reward: number } | null>(null);
+	const [showingBestPath, setShowingBestPath] = useState(false);
 	const [activeStage, setActiveStage] = useState<'selection' | 'expansion' | 'simulation' | 'backpropagation' | null>(null);
 	const [currentPath, setCurrentPath] = useState<RcaNode[]>([]);
 	const [treeData, setTreeData] = useState<TreeData>({ nodes: [], edges: [], nodeMap: {} as any });
@@ -357,9 +358,13 @@ export default function SparkRCAApp() {
 				});
 				setGhostChildren([]);
 				
+				// Sort children by reward (highest first) for exploration
+				const sortedUnvisited = [...unvisited].sort((a, b) => b.reward - a.reward);
+				console.log('📊 Sorted exploration queue by reward:', sortedUnvisited.map(n => `${n.label}(${(n.reward * 100).toFixed(0)}%)`).join(', '));
+				
 				// Update queue in both state and ref
-				setSimulationQueue([...unvisited]);
-				simulationQueueRef.current = [...unvisited];
+				setSimulationQueue(sortedUnvisited);
+				simulationQueueRef.current = sortedUnvisited;
 				setExplorationPhase('simulating');
 				
 				console.log('✅ Expanded', unvisited.length, 'children, queue now:', simulationQueueRef.current.length);
@@ -373,7 +378,7 @@ export default function SparkRCAApp() {
 			// Case 2: Simulate next child in queue
 			if (simulationQueueRef.current.length > 0) {
 				const nodeToSimulate = simulationQueueRef.current[0];
-				console.log('🧪 SIMULATING:', nodeToSimulate.label, 'Queue:', simulationQueueRef.current.length);
+				console.log('🧪 SIMULATING:', nodeToSimulate.label, `(confidence: ${(nodeToSimulate.reward * 100).toFixed(1)}%)`, 'Queue:', simulationQueueRef.current.length);
 				
 				setCurrentlyAnalyzingNode(nodeToSimulate);
 				setActiveStage('simulation');
@@ -402,7 +407,7 @@ export default function SparkRCAApp() {
 				
 				// Record results
 				const reward = nodeToSimulate.reward;
-				console.log('📈 Reward:', reward, 'for', nodeToSimulate.label);
+				console.log('📈 EVALUATED:', nodeToSimulate.label, `→ ${(reward * 100).toFixed(1)}% confidence`);
 				setLevelResults(prev => ({ ...prev, [nodeToSimulate.id]: reward }));
 				setNodeStats(prev => {
 					const next = { ...prev };
@@ -428,7 +433,14 @@ export default function SparkRCAApp() {
 				);
 				
 				if (!bestPathFound || reward > bestPathFound.reward) {
-					setBestPathFound({ path: [...currentPath, nodeToSimulate], reward });
+					// Build complete path from root to current node
+					const completePath: RcaNode[] = [];
+					let node: RcaNode | null = nodeToSimulate;
+					while (node) {
+						completePath.unshift(node);
+						node = node.parent ? treeData.nodeMap[node.parent] : null;
+					}
+					setBestPathFound({ path: completePath, reward });
 				}
 				
 				await new Promise(resolve => setTimeout(resolve, 200));
@@ -452,7 +464,7 @@ export default function SparkRCAApp() {
 			
 			// Case 3: All children simulated - select best and drill down
 			if (children.length > 0 && simulationQueueRef.current.length === 0) {
-				console.log('🎯 SELECTION PHASE');
+				console.log('🎯 SELECTION PHASE - Choosing highest confidence path');
 				
 				if (children.length === 0) {
 					console.log('🎉 ROOT CAUSE:', activeNode.label);
@@ -463,17 +475,42 @@ export default function SparkRCAApp() {
 					return;
 				}
 				
-				const bestChild = children.reduce((best, child) => {
-					const bestReward = levelResults[best.id] !== undefined ? levelResults[best.id] : best.reward;
-					const childReward = levelResults[child.id] !== undefined ? levelResults[child.id] : child.reward;
-					return childReward > bestReward ? child : best;
+				// Show all evaluated options with their rewards
+				console.log('📊 Confidence Comparison:');
+				const sortedChildren = [...children].sort((a, b) => {
+					const aReward = levelResults[a.id] !== undefined ? levelResults[a.id] : a.reward;
+					const bReward = levelResults[b.id] !== undefined ? levelResults[b.id] : b.reward;
+					return bReward - aReward;
+				});
+				sortedChildren.forEach((child, idx) => {
+					const reward = levelResults[child.id] !== undefined ? levelResults[child.id] : child.reward;
+					const icon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '  ';
+					console.log(`  ${icon} ${child.label}: ${(reward * 100).toFixed(1)}%`);
 				});
 				
-				console.log('🚀 DRILLING DOWN to:', bestChild.label, 'reward:', bestChild.reward);
+				// Select child with highest reward (confidence)
+				const bestChild = sortedChildren[0];
+				const selectedReward = levelResults[bestChild.id] !== undefined ? levelResults[bestChild.id] : bestChild.reward;
+				console.log(`🚀 SELECTED: ${bestChild.label} (${(selectedReward * 100).toFixed(1)}% - highest confidence)`);
+				
+				// Visual highlight for selection
+				setActiveStage('selection');
+				setSelectedNode(bestChild);
+				
+				// Brief pause to show selection
+				await new Promise(resolve => setTimeout(resolve, 400));
+				
+				// Drill down to selected child
 				setCurrentNodeId(bestChild.id);
 				currentNodeIdRef.current = bestChild.id;
 				setCurrentPath(prev => [...prev, bestChild]);
-				setSelectedNode(bestChild);
+				
+				// Add to investigation trail when drilling down to next level
+				setAccumulatedHypotheses(prev => 
+					prev.some(h => h.id === bestChild.id) ? prev : 
+					[...prev, { id: bestChild.id, title: bestChild.hypothesis.title, content: bestChild.hypothesis.content }]
+				);
+				
 				setLevelResults({});
 				setExplorationPhase('idle');
 				
@@ -559,7 +596,15 @@ export default function SparkRCAApp() {
 	const showBestPath = () => {
 		if (!bestPathFound) return;
 		const path = bestPathFound.path;
-		if (path.length > 0) showNode(path[path.length - 1]);
+		if (path.length > 0) {
+			// Update current path to highlight the best path
+			setCurrentPath(path);
+			setShowingBestPath(true);
+			// Show the final node in the best path
+			showNode(path[path.length - 1]);
+			// Auto-hide the banner after 5 seconds
+			setTimeout(() => setShowingBestPath(false), 5000);
+		}
 	};
 
 	const reset = async () => {
@@ -568,6 +613,7 @@ export default function SparkRCAApp() {
 		setIsPlaying(false);
 		isPlayingRef.current = false;
 		setBestPathFound(null);
+		setShowingBestPath(false);
 		setCurrentPath([]);
 		setActiveStage(null);
 		setSignals({});
@@ -1033,6 +1079,18 @@ export default function SparkRCAApp() {
 				color: #92400e; background: rgba(254, 252, 232, 0.95); 
 				padding: 8px 16px; border-radius: 12px; 
 				border: 1px solid rgba(251, 191, 36, 0.3); backdrop-filter: blur(10px); 
+			}
+			.best-path-banner {
+				position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+				display: flex; align-items: center; gap: 8px; font-size: 13px;
+				color: #065f46; background: rgba(236, 253, 245, 0.95);
+				padding: 8px 16px; border-radius: 12px;
+				border: 1px solid rgba(16, 185, 129, 0.3); backdrop-filter: blur(10px);
+				font-weight: 500; animation: slideDown 0.3s ease;
+			}
+			@keyframes slideDown {
+				from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+				to { opacity: 1; transform: translateX(-50%) translateY(0); }
 			}
 			.root-banner { 
 				position: absolute; top: 56px; left: 20px; right: 20px; 
@@ -1549,6 +1607,12 @@ export default function SparkRCAApp() {
 						<div className="breadcrumb">{computeBreadcrumb()}</div>
 						<div className="progress"><strong>Explored:</strong> {visibleNodeIds.size} / {treeData.nodes.length}</div>
 						{thinking && (<div className="thinking"><div className="pulse-dot"></div> Analyzing hypothesis...</div>)}
+						{showingBestPath && bestPathFound && (
+							<div className="best-path-banner">
+								<Star size={16} color="#10b981" fill="#10b981" />
+								<span>Best Path Highlighted (Reward: {(bestPathFound.reward * 100).toFixed(1)}%)</span>
+							</div>
+						)}
 
 						<svg className="tree-svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMin meet" ref={svgRef} onWheel={handleWheel} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}>
 							<defs>
