@@ -1372,49 +1372,54 @@ export default function SparkRCAApp() {
 			}
 			.control-bar { 
 				position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); 
-				background: rgba(26, 31, 54, 0.9);
+				background: rgba(30, 35, 56, 0.6);
 				backdrop-filter: blur(20px) saturate(180%);
 				-webkit-backdrop-filter: blur(20px) saturate(180%);
-				border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; 
+				border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; 
 				padding: 10px; display: flex; gap: 10px; z-index: 1000; 
-				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 1px rgba(99, 102, 241, 0.5);
+				/* Subtle neumorphic raised effect */
+				box-shadow: 
+					4px 4px 8px rgba(0, 0, 0, 0.3),
+					-2px -2px 4px rgba(255, 255, 255, 0.02);
 			}
 			.glass-btn { 
 				padding: 12px 18px; 
-				background: rgba(255, 255, 255, 0.1); 
+				background: rgba(255, 255, 255, 0.08); 
 				backdrop-filter: blur(10px);
-				border: 1px solid rgba(255, 255, 255, 0.2); 
+				border: 1px solid rgba(255, 255, 255, 0.1); 
 				border-radius: 12px; 
 				font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.9); cursor: pointer; 
 				transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
 				display: flex; align-items: center; gap: 8px; 
+				/* Subtle neumorphic raised effect */
 				box-shadow: 
-					2px 2px 4px rgba(0, 0, 0, 0.2),
+					2px 2px 4px rgba(0, 0, 0, 0.15),
 					-1px -1px 2px rgba(255, 255, 255, 0.02);
 			}
 			.glass-btn:hover { 
-				background: rgba(255, 255, 255, 0.15); 
-				transform: translateY(-2px); 
+				background: rgba(255, 255, 255, 0.12); 
+				transform: translateY(-1px); 
+				/* Enhanced neumorphic hover effect */
 				box-shadow: 
-					3px 3px 6px rgba(0, 0, 0, 0.3),
-					-1px -1px 3px rgba(255, 255, 255, 0.03),
-					0 0 12px rgba(99, 102, 241, 0.2);
+					3px 3px 6px rgba(0, 0, 0, 0.2),
+					-1px -1px 3px rgba(255, 255, 255, 0.03);
 			}
 			.glass-btn.primary { 
-				background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); 
-				border: none;
+				background: rgba(255, 255, 255, 0.15); 
+				border: 1px solid rgba(255, 255, 255, 0.2);
 				color: #ffffff; 
+				/* Enhanced neumorphic raised effect for primary */
 				box-shadow: 
-					3px 3px 6px rgba(0, 0, 0, 0.3),
-					-1px -1px 3px rgba(255, 255, 255, 0.05),
-					0 0 16px rgba(99, 102, 241, 0.4);
+					3px 3px 6px rgba(0, 0, 0, 0.2),
+					-1px -1px 3px rgba(255, 255, 255, 0.05);
 			}
 			.glass-btn.primary:hover { 
-				transform: translateY(-2px); 
+				background: rgba(255, 255, 255, 0.2);
+				transform: translateY(-1px); 
+				/* Enhanced neumorphic hover for primary */
 				box-shadow: 
-					4px 4px 8px rgba(0, 0, 0, 0.4),
-					-2px -2px 4px rgba(255, 255, 255, 0.08),
-					0 0 20px rgba(99, 102, 241, 0.6);
+					4px 4px 8px rgba(0, 0, 0, 0.25),
+					-2px -2px 4px rgba(255, 255, 255, 0.08);
 			}
 			.tree-legend { 
 				position: absolute; bottom: 20px; right: 20px; font-size: 11px; 
@@ -1467,40 +1472,28 @@ export default function SparkRCAApp() {
 				min-height: 0; 
 			}
 			.monitor-card { 
-				background: rgba(30, 35, 56, 0.5);
-				backdrop-filter: blur(16px) saturate(180%);
-				-webkit-backdrop-filter: blur(16px) saturate(180%);
+				background: rgba(30, 35, 56, 0.4);
+				backdrop-filter: blur(12px);
+				-webkit-backdrop-filter: blur(12px);
 				border: 1px solid rgba(255, 255, 255, 0.08); 
-				border-radius: 20px; 
+				border-radius: 16px; 
 				padding: 20px; 
 				display: flex; 
 				flex-direction: column; 
 				overflow: hidden; 
-				transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
-				/* Subtle neumorphic shadows - soft raised effect */
-				box-shadow: 
-					4px 4px 8px rgba(0, 0, 0, 0.2),
-					-2px -2px 6px rgba(255, 255, 255, 0.02),
-					inset 0 1px 1px rgba(255, 255, 255, 0.03);
+				transition: all 0.3s ease; 
 				position: relative;
-			}
-			.monitor-card::before {
-				content: '';
-				position: absolute;
-				top: 0;
-				left: 0;
-				right: 0;
-				height: 1px;
-				background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+				/* Subtle neumorphic raised effect */
+				box-shadow: 
+					2px 2px 4px rgba(0, 0, 0, 0.15),
+					-1px -1px 3px rgba(255, 255, 255, 0.02);
 			}
 			.monitor-card.active { 
-				background: rgba(40, 45, 70, 0.6);
-				border-color: rgba(99, 102, 241, 0.4); 
-				/* Subtle neumorphic pressed state */
+				/* Neumorphic pressed effect with subtle edge highlight */
 				box-shadow: 
-					inset 3px 3px 6px rgba(0, 0, 0, 0.3),
-					inset -2px -2px 4px rgba(255, 255, 255, 0.02),
-					0 0 16px rgba(99, 102, 241, 0.3);
+					inset 1px 1px 2px rgba(0, 0, 0, 0.2),
+					inset -1px -1px 2px rgba(255, 255, 255, 0.05),
+					0 0 0 1px rgba(99, 102, 241, 0.3);
 			}
 			.monitor-header { 
 				display: flex; 
@@ -1554,28 +1547,30 @@ export default function SparkRCAApp() {
 				border-radius: 10px; 
 				font-family: 'SF Mono', Monaco, 'Courier New', monospace; 
 				font-size: 11px; 
-				transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-				border: 1px solid rgba(0, 0, 0, 0.2);
+				transition: all 0.3s ease; 
+				border: 1px solid rgba(0, 0, 0, 0.15);
 				color: rgba(255, 255, 255, 0.85);
 				line-height: 1.5;
-				/* Neumorphic subtle inset */
+				/* Subtle inset effect */
 				box-shadow: 
-					inset 2px 2px 4px rgba(0, 0, 0, 0.3),
-					inset -1px -1px 2px rgba(255, 255, 255, 0.02);
+					inset 1px 1px 2px rgba(0, 0, 0, 0.15),
+					inset -1px -1px 1px rgba(255, 255, 255, 0.02);
 			}
 			.data-line:hover {
-				background: rgba(30, 35, 56, 0.6);
-				border-color: rgba(99, 102, 241, 0.3);
+				background: rgba(30, 35, 56, 0.5);
+				/* Subtle neumorphic hover effect */
 				box-shadow: 
-					inset 2px 2px 4px rgba(0, 0, 0, 0.2),
-					inset -1px -1px 2px rgba(255, 255, 255, 0.03),
-					0 0 8px rgba(99, 102, 241, 0.2);
+					inset 1px 1px 2px rgba(0, 0, 0, 0.2),
+					inset -1px -1px 1px rgba(255, 255, 255, 0.03);
 			}
 			.data-line.highlight { 
-				background: linear-gradient(90deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.1)); 
-				border-color: rgba(99, 102, 241, 0.5);
+				background: rgba(30, 35, 56, 0.6);
 				animation: slideIn 0.5s ease; 
-				box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+				/* Subtle neumorphic highlight with edge glow */
+				box-shadow: 
+					inset 1px 1px 2px rgba(0, 0, 0, 0.2),
+					inset -1px -1px 1px rgba(255, 255, 255, 0.03),
+					0 0 0 1px rgba(99, 102, 241, 0.4);
 			}
 			@keyframes slideIn { 
 				from { opacity: 0; transform: translateX(-8px); } 
@@ -1583,13 +1578,13 @@ export default function SparkRCAApp() {
 			}
 			.metrics-tabs { 
 				display: flex; gap: 4px; margin-bottom: 14px; padding: 6px; 
-				background: rgba(20, 25, 45, 0.5); 
+				background: rgba(20, 25, 45, 0.4); 
 				border-radius: 12px; 
 				backdrop-filter: blur(8px);
 				/* Subtle inset container */
 				box-shadow: 
-					inset 2px 2px 4px rgba(0, 0, 0, 0.3),
-					inset -1px -1px 2px rgba(255, 255, 255, 0.02);
+					inset 1px 1px 2px rgba(0, 0, 0, 0.2),
+					inset -1px -1px 1px rgba(255, 255, 255, 0.02);
 			}
 			.metric-tab { 
 				flex: 1; padding: 8px 12px; font-size: 11px; font-weight: 500; 
@@ -1611,28 +1606,25 @@ export default function SparkRCAApp() {
 			.metric-label { font-size: 12px; color: rgba(255, 255, 255, 0.7); font-weight: 500; }
 			.metric-chart { 
 				height: 70px; margin-top: 12px; border-radius: 14px; 
-				background: rgba(20, 25, 45, 0.6); 
+				background: rgba(20, 25, 45, 0.5); 
 				position: relative; overflow: hidden; 
-				border: 1px solid rgba(0, 0, 0, 0.2);
-				/* Subtle inset - embossed track */
+				border: 1px solid rgba(0, 0, 0, 0.15);
+				/* Subtle inset track */
 				box-shadow: 
-					inset 2px 2px 4px rgba(0, 0, 0, 0.3),
-					inset -1px -1px 3px rgba(255, 255, 255, 0.02);
+					inset 1px 1px 2px rgba(0, 0, 0, 0.2),
+					inset -1px -1px 1px rgba(255, 255, 255, 0.02);
 			}
 			.metric-chart-bar { 
 				position: absolute; bottom: 0; left: 0; height: 100%; 
 				background: linear-gradient(180deg, #06b6d4 0%, #0891b2 50%, #0e7490 100%); 
 				transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); 
 				border-radius: 12px; 
-				box-shadow: 0 0 20px rgba(6, 182, 212, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2);
 			}
 			.metric-chart-bar.cpu { 
 				background: linear-gradient(180deg, #a855f7 0%, #9333ea 50%, #7e22ce 100%); 
-				box-shadow: 0 0 20px rgba(168, 85, 247, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2);
 			}
 			.metric-chart-bar.gc { 
 				background: linear-gradient(180deg, #f59e0b 0%, #d97706 50%, #b45309 100%); 
-				box-shadow: 0 0 20px rgba(245, 158, 11, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2);
 			}
 			.monitor-card.scanning { 
 				animation: scanPulse 1.5s ease-in-out infinite; 
